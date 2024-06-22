@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Seq.App.Metrics", "Seq.App.Metrics\Seq.App.Metrics.csproj", "{42E147AA-2AE2-4348-BFA7-29BF178D9394}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{2C869C7B-D57F-44DB-9445-AF8A2B088C37}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{42E147AA-2AE2-4348-BFA7-29BF178D9394}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{42E147AA-2AE2-4348-BFA7-29BF178D9394}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{42E147AA-2AE2-4348-BFA7-29BF178D9394}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{42E147AA-2AE2-4348-BFA7-29BF178D9394}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2C869C7B-D57F-44DB-9445-AF8A2B088C37}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C869C7B-D57F-44DB-9445-AF8A2B088C37}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C869C7B-D57F-44DB-9445-AF8A2B088C37}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C869C7B-D57F-44DB-9445-AF8A2B088C37}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
