@@ -1,4 +1,6 @@
 bin/
 obj/
+dist/
 .idea/
+.nuke/temp/
 *.user

@@ -5,6 +5,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Seq.App.Metrics\Seq.App.Metrics.csproj" />
+    <ProjectReference Include="..\Seq.App.OTelMetrics\Seq.App.OTelMetrics.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,13 +1,18 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 using Seq.Apps;
 using Seq.Apps.LogEvents;
 
-namespace Seq.App.Metrics;
+namespace Seq.App.OTelMetrics;
 
-[SeqApp("Metrics", Description = "Uses a provided template to send events as formatted email.")]
+[SeqApp("OTel Metrics", Description = "Collect metrics from log events and send them to an OpenTelemetry receiver.")]
 public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
 {
+    private MeterProvider? _meterProvider;
+    private Meter? _meter;
     private Counter<long>? _counter;
     private UpDownCounter<long>? _upDownCounter;
     private readonly ConcurrentDictionary<string, Measurement<long>> _gaugeMeasurements = new();
@@ -16,9 +21,10 @@ public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
 
     [SeqAppSetting(
         DisplayName = "Metric name",
-        HelpText = "The name of the metric to expose. It's recommended you follow the naming conventions here: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/general/metrics.md"
+        HelpText = "Customize the name of the metric to expose. If not specified, the title of the app instance will be used.",
+        IsOptional = true
     )]
-    public string MetricName { get; set; } = "seq_app_metric";
+    public string? CustomMetricName { get; set; } = "seq_app_metric";
 
     [SeqAppSetting(
         DisplayName = "Metric description",
@@ -50,21 +56,39 @@ public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
     )]
     public string? IncludedProperties { get; set; }
 
+    [SeqAppSetting(
+        DisplayName = "OLTP endpoint",
+        HelpText = "The endpoint to send metrics to. If not provided, metrics will be sent to the local collector.",
+        IsOptional = true
+    )]
+    public string? OltpEndpoint { get; set; }
+
     protected override void OnAttached()
     {
+        _meterProvider = Sdk.CreateMeterProviderBuilder()
+            .ConfigureResource(r => r.AddService("Seq.App.OTelMetrics", autoGenerateServiceInstanceId: false))
+            .AddMeter(App.Id)
+            .AddOtlpExporter(o =>
+                {
+                    if (OltpEndpoint is not null && Uri.TryCreate(OltpEndpoint, UriKind.Absolute, out var uri))
+                        o.Endpoint = uri;
+                })
+            .Build();
+        _meter = new Meter(App.Id);
+        
         switch (MetricType)
         {
             case MetricType.Counter:
-                _counter = Metrics.CreateCounter(MetricName, Unit, Description);
+                _counter = _meter.CreateCounter<long>(MetricName, Unit, Description);
                 break;
             case MetricType.UpDownCounter:
-                _upDownCounter = Metrics.CreateUpDownCounter(MetricName, Unit, Description);
+                _upDownCounter = _meter.CreateUpDownCounter<long>(MetricName, Unit, Description);
                 break;
             case MetricType.Gauge:
-                Metrics.CreateGauge(MetricName, () => _gaugeMeasurements.Values, Unit, Description);
+                _meter.CreateObservableGauge(MetricName, () => _gaugeMeasurements.Values, Unit, Description);
                 break;
             case MetricType.Histogram:
-                _histogram = Metrics.CreateHistogram(MetricName, Unit, Description);
+                _histogram = _meter.CreateHistogram<long>(MetricName, Unit, Description);
                 break;
             default:
                 Log.Fatal("Unexpected metric type {MetricType}", MetricType);
@@ -73,6 +97,8 @@ public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
 
         _includedProperties = IncludedProperties?.Split(',').Select(p => p.Trim()).ToArray() ?? [];
     }
+
+    private string MetricName => string.IsNullOrWhiteSpace(CustomMetricName) ? App.Title : CustomMetricName;
 
     public void On(Event<LogEventData> evt)
     {
@@ -130,7 +156,11 @@ public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
             .Select(p => new KeyValuePair<string, object?>(p, evt.Data.Properties.GetValueOrDefault(p)))
             .ToArray();
 
-    public void Dispose() => Metrics.AppDisposed();
+    public void Dispose()
+    {
+        _meter?.Dispose();
+        _meterProvider?.Dispose();
+    }
 }
 
 public enum MetricType

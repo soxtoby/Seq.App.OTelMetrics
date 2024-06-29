@@ -1,11 +1,11 @@
-﻿using Seq.App.Metrics;
+﻿using Seq.App.OTelMetrics;
 using Serilog;
 
 using var log = new LoggerConfiguration()
     .WriteTo.Console()
     .AuditTo.SeqApp<MetricsApp>(new Dictionary<string, string>
         {
-            [nameof(MetricsApp.MetricName)] = "events",
+            [nameof(MetricsApp.CustomMetricName)] = "test_events",
             [nameof(MetricsApp.MetricType)] = MetricType.Counter.ToString(),
         })
     .CreateLogger();
