@@ -12,7 +12,7 @@ namespace Seq.App.OTelMetrics;
 [SeqApp("OTel Metrics", Description = "Collect metrics from log events and send them to an OpenTelemetry receiver.")]
 public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
 {
-    private MeterProvider? _meterProvider;
+    protected MeterProvider? MeterProvider;
     private Meter? _meter;
     private Counter<long>? _counter;
     private UpDownCounter<long>? _upDownCounter;
@@ -73,17 +73,13 @@ public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
 
     protected override void OnAttached()
     {
-        _meterProvider = Sdk.CreateMeterProviderBuilder()
-            .ConfigureResource(r => r.AddService("Seq.App.OTelMetrics", autoGenerateServiceInstanceId: false))
-            .AddMeter(App.Id)
-            .AddOtlpExporter(o =>
-                {
-                    if (OltpEndpoint is not null && Uri.TryCreate(OltpEndpoint, UriKind.Absolute, out var uri))
-                        o.Endpoint = uri;
-                })
+        MeterProvider = ConfigureExporters(Sdk.CreateMeterProviderBuilder()
+                .ConfigureResource(r => r.AddService("Seq.App.OTelMetrics", autoGenerateServiceInstanceId: false))
+                .AddMeter(App.Id))
             .Build();
         _meter = new Meter(App.Id);
-        
+        _includedProperties = IncludedProperties?.Split(',').Select(p => p.Trim()).ToArray() ?? [];
+
         switch (MetricType)
         {
             case MetricType.Counter:
@@ -102,8 +98,16 @@ public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
                 Log.Fatal("Unexpected metric type {MetricType}", MetricType);
                 break;
         }
+    }
 
-        _includedProperties = IncludedProperties?.Split(',').Select(p => p.Trim()).ToArray() ?? [];
+    protected virtual MeterProviderBuilder ConfigureExporters(MeterProviderBuilder meterProviderBuilder)
+    {
+        return meterProviderBuilder.AddOtlpExporter(o =>
+            {
+                o.Protocol = OtlpExportProtocol;
+                if (OtlpEndpoint is not null && Uri.TryCreate(OtlpEndpoint, UriKind.Absolute, out var uri))
+                    o.Endpoint = uri;
+            });
     }
 
     private string MetricName => string.IsNullOrWhiteSpace(CustomMetricName) ? App.Title : CustomMetricName;
@@ -113,21 +117,31 @@ public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
         switch (MetricType)
         {
             case MetricType.Counter:
-                _counter!.Add(MetricValueFromEvent(evt) ?? 1, TagsFromEvent(evt));
+                AddToCounter(evt);
                 break;
             case MetricType.UpDownCounter:
-                _upDownCounter!.Add(MetricValueFromEvent(evt) ?? 0, TagsFromEvent(evt));
+                AddToUpDownCounter(evt);
                 break;
             case MetricType.Gauge:
                 UpdateGauge(MetricValueFromEvent(evt) ?? 0, TagsFromEvent(evt));
                 break;
             case MetricType.Histogram:
-                _histogram!.Record(MetricValueFromEvent(evt) ?? SpanLengthFromEvent(evt), TagsFromEvent(evt));
+                RecordHistogramMeasurement(evt);
                 break;
             default:
                 Log.Fatal("Unexpected metric type {MetricType}", MetricType);
                 break;
         }
+    }
+
+    private void AddToCounter(Event<LogEventData> evt)
+    {
+        _counter!.Add(MetricValueFromEvent(evt) ?? 1, TagsFromEvent(evt));
+    }
+
+    private void AddToUpDownCounter(Event<LogEventData> evt)
+    {
+        _upDownCounter!.Add(MetricValueFromEvent(evt) ?? 0, TagsFromEvent(evt));
     }
 
     private void UpdateGauge(long value, KeyValuePair<string, object?>[] tags)
@@ -136,10 +150,17 @@ public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
         _gaugeMeasurements[tagsKey] = new Measurement<long>(value, tags);
     }
 
-    private static long SpanLengthFromEvent(Event<LogEventData> evt) =>
-        evt.Data.Properties.GetValueOrDefault("@st") is DateTimeOffset spanStart
-            ? (long)(spanStart - evt.Timestamp).TotalMilliseconds
-            : 0;
+    private void RecordHistogramMeasurement(Event<LogEventData> evt)
+    {
+        if ((MetricValueFromEvent(evt) ?? SpanLengthFromEvent(evt)) is long value)
+            _histogram!.Record(value, TagsFromEvent(evt));
+    }
+
+    private static long? SpanLengthFromEvent(Event<LogEventData> evt) =>
+        evt.Data.Properties.GetValueOrDefault("SpanStartTimestamp") is string spanStartTimestamp
+        && DateTimeOffset.TryParse(spanStartTimestamp, out var spanStart)
+            ? (long)(evt.Timestamp - spanStart).TotalMilliseconds
+            : null;
 
     private long? MetricValueFromEvent(Event<LogEventData> evt)
     {
@@ -167,7 +188,7 @@ public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
     public void Dispose()
     {
         _meter?.Dispose();
-        _meterProvider?.Dispose();
+        MeterProvider?.Dispose();
     }
 }
 
