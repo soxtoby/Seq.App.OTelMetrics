@@ -1,3 +1,4 @@
+using System;
 using Nuke.Common;
 using Nuke.Common.CI.GitHubActions;
 using Nuke.Common.IO;
@@ -6,7 +7,7 @@ using Nuke.Common.Tools.GitVersion;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
 
 [GitHubActions(
-    "ci", 
+    "ci",
     GitHubActionsImage.WindowsLatest,
     On = [GitHubActionsTrigger.Push],
     FetchDepth = 0
@@ -21,17 +22,13 @@ using static Nuke.Common.Tools.DotNet.DotNetTasks;
 )]
 class Build : NukeBuild
 {
-    public static int Main () => Execute<Build>(x => x.Pack);
-    
-    [Secret]
-    [Parameter("NuGet API key")]
-    readonly string NuGetApiKey = null!;
+    public static int Main() => Execute<Build>(x => x.Pack);
 
-    [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
-    readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
-    
-    [GitVersion]
-    readonly GitVersion GitVersion = null!;
+    [Secret] [Parameter("NuGet API key")] readonly string NuGetApiKey = null!;
+
+    [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")] readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
+
+    [GitVersion] readonly GitVersion GitVersion = null!;
 
     Target Clean => _ => _
         .Before(Restore)
@@ -57,9 +54,16 @@ class Build : NukeBuild
         .Produces(OutputDirectory / "*.nupkg")
         .Executes(() =>
         {
-            DotNetPublish(c => c.SetConfiguration(Configuration));
+            DotNetPublish(c => c
+                .SetConfiguration(Configuration)
+                .EnableNoRestore()
+                .SetVersion(GitVersion.AssemblySemVer)
+            );
             DotNetPack(c => c
                 .SetConfiguration(Configuration)
+                .EnableNoRestore()
+                .EnableNoBuild()
+                .SetVersion(Version)
                 .SetOutputDirectory(OutputDirectory)
             );
         });
@@ -74,6 +78,13 @@ class Build : NukeBuild
                 .SetApiKey(NuGetApiKey));
         });
 
-    AbsolutePath PackagePath => OutputDirectory / $"Seq.App.OTelMetrics.{GitVersion.NuGetVersion}.nupkg";
+    AbsolutePath PackagePath => OutputDirectory / $"Seq.App.OTelMetrics.{Version}.nupkg";
+
+    string Version => Configuration == Configuration.Release
+        ? GitVersion.FullSemVer
+        : $"{GitVersion.SemVer}.{SecondsSinceLastCommit}";
+
+    int SecondsSinceLastCommit => (int)(Now - DateTime.Parse(GitVersion.CommitDate)).TotalSeconds;
+    readonly DateTime Now = DateTime.Now;
     static AbsolutePath OutputDirectory => RootDirectory / "dist";
 }
