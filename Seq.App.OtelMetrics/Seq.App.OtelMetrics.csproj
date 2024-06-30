@@ -8,8 +8,9 @@
     <Description>Collect metrics from log events and send them to an OpenTelemetry receiver.</Description>
     <Copyright>Copyright (c) Simon Oxtoby 2024</Copyright>
     <PackageProjectUrl>https://github.com/soxtoby/Seq.App.OTelMetrics</PackageProjectUrl>
-    <PackageLicenseUrl>https://licenses.nuget.org/MIT</PackageLicenseUrl>
+    <PackageLicense>MIT</PackageLicense>
     <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/soxtoby/Seq.App.OTelMetrics.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>seq-app OpenTelemetry Metrics</PackageTags>
@@ -22,11 +23,8 @@
   </ItemGroup>
   
   <ItemGroup>
-    <None Include="..\assets\icon.png">
-      <Pack>True</Pack>
-      <PackagePath></PackagePath>
-      <Link>icon.png</Link>
-    </None>
+    <None Include="..\assets\icon.png" Pack="true" PackagePath="\" />
+    <None Include="..\readme.md" Pack="true" PackagePath="\"/>
     <None Include="./bin/$(Configuration)/$(TargetFramework)/publish/**/*" Exclude="./bin/$(Configuration)/$(TargetFramework)/publish/$(MSBuildProjectName).dll;./bin/$(Configuration)/$(TargetFramework)/publish/Seq.Apps.dll;./bin/$(Configuration)/$(TargetFramework)/publish/Serilog.dll" Pack="true" PackagePath="lib/$(TargetFramework)" />
   </ItemGroup>
 
