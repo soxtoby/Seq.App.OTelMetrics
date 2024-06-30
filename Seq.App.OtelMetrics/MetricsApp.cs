@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using OpenTelemetry;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using Seq.Apps;
@@ -19,6 +20,16 @@ public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
     private Histogram<long>? _histogram;
     private string[] _includedProperties = [];
 
+    [SeqAppSetting(DisplayName = "Type of metric")]
+    public MetricType MetricType { get; set; }
+
+    [SeqAppSetting(
+        DisplayName = "Unit",
+        HelpText = "Unit of measurement the metric represents.",
+        IsOptional = true
+    )]
+    public string? Unit { get; set; }
+
     [SeqAppSetting(
         DisplayName = "Metric name",
         HelpText = "Customize the name of the metric to expose. If not specified, the title of the app instance will be used.",
@@ -31,16 +42,6 @@ public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
         IsOptional = true
     )]
     public string? Description { get; set; }
-
-    [SeqAppSetting(DisplayName = "Type of metric")]
-    public MetricType MetricType { get; set; }
-
-    [SeqAppSetting(
-        DisplayName = "Unit",
-        HelpText = "Unit of measurement the metric represents.",
-        IsOptional = true
-    )]
-    public string? Unit { get; set; }
 
     [SeqAppSetting(
         DisplayName = "Value property",
@@ -57,11 +58,18 @@ public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
     public string? IncludedProperties { get; set; }
 
     [SeqAppSetting(
-        DisplayName = "OLTP endpoint",
+        DisplayName = "OTLP endpoint",
         HelpText = "The endpoint to send metrics to. If not provided, metrics will be sent to the local collector.",
         IsOptional = true
     )]
-    public string? OltpEndpoint { get; set; }
+    public string? OtlpEndpoint { get; set; }
+
+    [SeqAppSetting(
+        DisplayName = "OTLP export protocol",
+        HelpText = "Defaults to gRPC.",
+        IsOptional = true
+    )]
+    public OtlpExportProtocol OtlpExportProtocol { get; set; }
 
     protected override void OnAttached()
     {
