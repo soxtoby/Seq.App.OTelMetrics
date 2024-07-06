@@ -8,16 +8,9 @@ using MetricType = Seq.App.OTelMetrics.MetricType;
 
 namespace Tests;
 
-public class MetricsAppTests : IDisposable
+public class MetricsAppTests(ITestOutputHelper output) : IDisposable
 {
-    private readonly ITestOutputHelper _output;
-    private readonly TestMetricsApp _sut;
-
-    public MetricsAppTests(ITestOutputHelper output)
-    {
-        _output = output;
-        _sut = new TestMetricsApp { CustomMetricName = "test_metric" };
-    }
+    private readonly TestMetricsApp _sut = new() { CustomMetricName = "test_metric" };
 
     public void Dispose() => _sut.Dispose();
 
@@ -202,7 +195,7 @@ public class MetricsAppTests : IDisposable
     }
 
     Logger CreateLogger() => new LoggerConfiguration()
-        .WriteTo.TestOutput(_output)
+        .WriteTo.TestOutput(output)
         .AuditTo.SeqApp(_sut)
         .CreateLogger();
 }

@@ -35,7 +35,7 @@ public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
         HelpText = "Customize the name of the metric to expose. If not specified, the title of the app instance will be used.",
         IsOptional = true
     )]
-    public string? CustomMetricName { get; set; } = "seq_app_metric";
+    public string? CustomMetricName { get; set; }
 
     [SeqAppSetting(
         DisplayName = "Metric description",
@@ -157,10 +157,16 @@ public class MetricsApp : SeqApp, ISubscribeTo<LogEventData>, IDisposable
     }
 
     private static long? SpanLengthFromEvent(Event<LogEventData> evt) =>
-        evt.Data.Properties.GetValueOrDefault("SpanStartTimestamp") is string spanStartTimestamp
+        SpanStartTimestamp(evt) is string spanStartTimestamp
         && DateTimeOffset.TryParse(spanStartTimestamp, out var spanStart)
             ? (long)(evt.Timestamp - spanStart).TotalMilliseconds
             : null;
+
+    private static object? SpanStartTimestamp(Event<LogEventData> evt)
+    {
+        return evt.Data.Properties.GetValueOrDefault("@st")
+            ?? evt.Data.Properties.GetValueOrDefault("SpanStartTimestamp");
+    }
 
     private long? MetricValueFromEvent(Event<LogEventData> evt)
     {
