@@ -81,7 +81,8 @@
               "Compile",
               "Pack",
               "Publish",
-              "Restore"
+              "Restore",
+              "Test"
             ]
           }
         },
@@ -95,7 +96,8 @@
               "Compile",
               "Pack",
               "Publish",
-              "Restore"
+              "Restore",
+              "Test"
             ]
           }
         },

@@ -10,13 +10,14 @@ using static Nuke.Common.Tools.DotNet.DotNetTasks;
     "ci",
     GitHubActionsImage.WindowsLatest,
     On = [GitHubActionsTrigger.Push],
+    InvokedTargets = [nameof(Test)],
     FetchDepth = 0
 )]
 [GitHubActions(
     "publish",
     GitHubActionsImage.WindowsLatest,
     On = [GitHubActionsTrigger.WorkflowDispatch],
-    InvokedTargets = [nameof(Pack)],
+    InvokedTargets = [nameof(Publish)],
     ImportSecrets = [nameof(NuGetApiKey)],
     FetchDepth = 0
 )]
@@ -44,9 +45,24 @@ class Build : NukeBuild
         });
 
     Target Compile => _ => _
+        .DependsOn(Restore)
         .Executes(() =>
         {
-            DotNetBuild(c => c.SetConfiguration(Configuration));
+            DotNetBuild(c => c
+                .EnableNoRestore()
+                .SetConfiguration(Configuration)
+            );
+        });
+
+    Target Test => _ => _
+        .DependsOn(Compile)
+        .Executes(() =>
+        {
+            DotNetTest(c => c
+                .EnableNoRestore()
+                .EnableNoBuild()
+                .SetConfiguration(Configuration)
+            );
         });
 
     Target Pack => _ => _
@@ -55,14 +71,14 @@ class Build : NukeBuild
         .Executes(() =>
         {
             DotNetPublish(c => c
-                .SetConfiguration(Configuration)
                 .EnableNoRestore()
+                .SetConfiguration(Configuration)
                 .SetVersion(GitVersion.AssemblySemVer)
             );
             DotNetPack(c => c
-                .SetConfiguration(Configuration)
                 .EnableNoRestore()
                 .EnableNoBuild()
+                .SetConfiguration(Configuration)
                 .SetVersion(Version)
                 .SetOutputDirectory(OutputDirectory)
             );
