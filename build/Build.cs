@@ -87,9 +87,11 @@ class Build : NukeBuild
     Target Publish => _ => _
         .DependsOn(Pack)
         .Requires(() => Configuration == Configuration.Release)
+        .Requires(() => NuGetApiKey)
         .Executes(() =>
         {
             DotNetNuGetPush(c => c
+                .SetSource("https://api.nuget.org/v3/index.json")
                 .SetTargetPath(PackagePath)
                 .SetApiKey(NuGetApiKey));
         });
